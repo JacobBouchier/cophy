@@ -1,0 +1,65 @@
+# Snakemake profile for running CoPhy on a Slurm cluster via the
+# snakemake-executor-plugin-slurm plugin.
+#
+#   snakemake --profile profiles/slurm --config cfg=config/config.txt \
+#             outdir=results/<project_name>
+#
+# Adjust partition, account, and per-rule resources for your cluster.
+# See also submit_cophy.sh for a single-node "local cores" alternative
+# that avoids the cluster's Slurm executor entirely (simpler, and what we
+# recommend for small query sets).
+
+executor: slurm
+jobs: 50
+use-conda: true
+conda-frontend: conda
+latency-wait: 60
+keep-going: true
+
+# Only re-run a rule when its inputs are newer than its outputs (ignore
+# code/params/env changes). Strongly recommended: prevents spurious
+# full-pipeline re-runs when scripts are edited.
+rerun-triggers:
+  - mtime
+
+default-resources:
+  slurm_partition: "batch"       # <-- set to your cluster's partition
+  # slurm_account: "your_account"  # <-- uncomment/set if your cluster requires it
+  runtime: 120                   # minutes
+  mem_mb: 8000
+  cpus_per_task: 1
+
+# Per-rule resource overrides. Tune to your cluster and dataset size.
+set-resources:
+  search:
+    cpus_per_task: 16
+    mem_mb: 120000
+    runtime: 4320
+  primary_rbh:
+    cpus_per_task: 8
+    mem_mb: 16000
+    runtime: 2880
+  cooccurrence_rbh:
+    cpus_per_task: 8
+    mem_mb: 16000
+    runtime: 1440
+  align_group:
+    cpus_per_task: 8
+    mem_mb: 16000
+    runtime: 240
+  trim_group:
+    mem_mb: 8000
+  supermatrix:
+    mem_mb: 16000
+  tree:
+    cpus_per_task: 8
+    mem_mb: 128000               # large supermatrices need lots of RAM
+    runtime: 1440
+  cooccurrence:
+    mem_mb: 16000
+    runtime: 480
+
+set-threads:
+  search: 8
+  align_group: 8
+  tree: 8

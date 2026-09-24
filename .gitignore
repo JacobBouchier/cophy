@@ -1,0 +1,25 @@
+# --- Secrets / user config -------------------------------------------------
+# The real config carries an NCBI API key and cluster-specific paths.
+# Only the template (config.example.txt) is tracked.
+config/config.txt
+config/config_*.txt
+!config/config.example.txt
+
+# --- Pipeline outputs and caches -------------------------------------------
+results/
+resources/cache/
+logs/
+.snakemake/
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Editor / OS ------------------------------------------------------------
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

@@ -1,0 +1,8 @@
+# Conda environment for the foldseek structural search rule.
+name: cophy-foldseek
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >=3.9
+  - foldseek

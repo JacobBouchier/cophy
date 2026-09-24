@@ -1,0 +1,203 @@
+# CoPhy configuration file
+# ---------------------------------------------------------------------
+# Plain `key = value` format, grouped into [sections].
+# Lines starting with '#' are comments. Blank lines are ignored.
+# Inline comments ARE supported: everything after a '#' on a line is
+# ignored, so do not use '#' inside a value.
+# Booleans accept: true/false, yes/no, 1/0 (case-insensitive).
+# See config/README_config.md for a full description of every key.
+# =====================================================================
+
+[input]
+# Project name that will determine the name of the results folder that the 
+# results will be saved in.
+project_name = my_project      # results are written to results/<project_name>/
+
+# Primary UniProt IDs that define the ortholog groups used to build the
+# tree. Either list them inline (comma- or whitespace-separated) OR give
+# a path to a text file with one ID per line. If both are set, the file wins.
+query_ids        = Q180W3
+query_ids_file   =
+
+# Additional UniProt IDs for the co-occurrence analysis (step 9).
+# Same inline-or-file convention as above.
+cooccurrence_ids      = P35149
+cooccurrence_ids_file =
+
+[databases]
+# Sequence DBs for mmseqs2 and HMMER.
+#
+# These two tools want DIFFERENT forms of UniRef on disk:
+#   * mmseqs2 wants its OWN index prefix (no extension), where the directory
+#     contains files like uniref90, uniref90.dbtype, uniref90.index, etc.
+#       e.g.  mmseqs2_db = /shared/dbs/mmseqs/uniref90
+#   * HMMER (phmmer) wants a plain FASTA file.
+#       e.g.  hmmer_db   = /shared/dbs/fasta/uniref90.fasta
+#
+# If only `uniref_path` is set, both tools will use it (works when your
+# cluster has a single path that satisfies both — uncommon but possible).
+# If `mmseqs2_db` or `hmmer_db` is set, it overrides uniref_path for that
+# tool.
+#
+# uniref_version (50 or 90) is informational; it doesn't download anything.
+uniref_version   = 90
+uniref_path      =
+mmseqs2_db       = /path/to/databases/uniref90_db
+hmmer_db         = /path/to/databases/uniref90.fasta
+
+# foldseek structure DB. Only needed if foldseek is enabled in [search]. Point
+# at the foldseek DB prefix.
+foldseek_db_path = /path/to/databases/afdb_foldseek/afdb_uniprot_db
+
+# Local cache directory for files the pipeline fetches from UniProt/EBI
+# (query sequences, AlphaFold structures, taxonomy, CDS). Created if absent.
+cache_dir        = resources/cache
+
+[search]
+# Which tools vote on orthology. foldseek is OFF by default (needs the
+# structure DB and only covers entries with AlphaFold models).
+use_mmseqs2 = true
+use_hmmer   = true
+use_foldseek = true
+
+# How to combine the enabled tools into an ortholog call.
+#   consensus     -> a hit must be found by at least `min_tools` of the
+#                    enabled tools (default; recommended)
+#   union         -> any enabled tool's hit counts
+#   intersection  -> every enabled tool must agree
+consensus_mode = union
+min_tools      = 1
+
+# How orthology is defined per query group.
+#   forward -> hits passing thresholds are group members (default, faster)
+#   rbh     -> additionally require reciprocal-best-hit back to the query
+orthology_mode = forward
+primary_rbh_mode = filter      # or 'annotate' to mark species without dropping
+
+# What should the taxonomic filter be? Bacteria means only bacteria will be included in the tree.
+# Leave blank for no filtering.
+kingdom_filter = Bacteria
+
+# Cap how many hits per tool per group are resolved against UniProt to build
+# the ortholog set. Lower values bound network/runtime cost dramatically
+# (each kept hit costs one UniProt REST call). 0 = no cap (keep all hits).
+# Hits are kept by descending score, so the top-scoring orthologs survive.
+# 5000 is conservative for UniRef90 with union mode; 1000 is faster.
+max_hits_per_tool = 5000
+
+# ---- mmseqs2 search parameters ----
+mmseqs2_sensitivity = 7.5
+mmseqs2_evalue      = 1e-5
+mmseqs2_min_seq_id  = 0.3
+mmseqs2_coverage    = 0.5
+mmseqs2_cov_mode    = 0
+# Cap mmseqs2 memory so it splits a large DB (e.g. UniRef90 wants ~270G at
+# defaults) into chunks that fit. Set to a value safely BELOW the job's
+# mem_mb in profiles/slurm/config.yaml. Accepts mmseqs units, e.g. 100G, 0
+# means unlimited (mmseqs2 default). Recommended: ~80% of the search rule's
+# allocated memory.
+mmseqs2_split_memory = 100G
+
+# ---- HMMER (phmmer) search parameters ----
+hmmer_evalue      = 1e-5
+hmmer_dom_evalue  = 1e-5
+hmmer_incE        = 1e-5
+hmmer_bitscore    = 0          # 0 = use e-value gating instead of bitscore
+
+# ---- foldseek search parameters (used only if use_foldseek = true) ----
+foldseek_evalue           = 1e-3
+foldseek_alntmscore       = false
+foldseek_max_seqs         = 5000
+foldseek_exhaustive_search = false
+foldseek_split_memory = 100G
+foldseek_extra  = --prefilter-mode 1   # extra raw foldseek flags, appended verbatim
+
+[dedup]
+# Remove repeat species so each species appears once per ortholog group.
+dedup_species   = true
+# Species defined by binomial only (genus + species); strain/subspecies
+# are collapsed. Options: binomial | subspecies | none
+species_rank    = binomial
+# Representative tie-break when a species has multiple hits in a group:
+#   swissprot_then_lowest_taxid  (default per your spec)
+#   best_score | longest | lowest_taxid | swissprot_then_best_score
+tie_break       = swissprot_then_lowest_taxid
+
+[sequences]
+# Sequence type for the supermatrix. aa (default) uses protein sequences.
+# nt maps each UniProt entry to its ENA/EMBL coding sequence (CDS); entries
+# without a usable CDS cross-reference are reported and skipped.
+seq_type        = aa
+
+[align]
+# aligner: mafft (default) | pagan2
+# If pagan2 is chosen, a guide tree is built automatically from a MAFFT
+# alignment + FastTree2 and passed to PAGAN2.
+aligner         = mafft
+
+# MAFFT options. mafft_algo: auto | linsi | ginsi | einsi | fftns
+mafft_algo      = auto
+mafft_maxiterate = 1000
+mafft_extra     = --anysymbol           # any extra raw MAFFT flags, appended verbatim
+
+# PAGAN2 options (used only if aligner = pagan2)
+pagan2_extra    =            # extra raw PAGAN2 flags, appended verbatim
+
+[trim]
+# ClipKIT trimming. mode is ClipKIT's -m/--mode:
+#   smart-gap | gappy | kpic | kpic-smart-gap | kpi | kpi-gappy | kpi-smart-gap
+clipkit_mode    = smart-gap
+clipkit_gaps    = 0.9        # used by gap-based modes (-g/--gaps)
+clipkit_extra   =            # extra raw ClipKIT flags, appended verbatim
+
+[tree]
+# FastTree2 options. For protein data the default model is LG; for nt, GTR.
+# fasttree_model: lg | wag | jtt (aa)  |  gtr | jc (nt)
+fasttree_model  = lg
+fasttree_gamma  = true
+fasttree_extra  =            # extra raw FastTree flags, appended verbatim
+# Binary name for FastTree2 (some clusters install it as FastTreeMP).
+fasttree_bin = FastTreeMP
+
+[neighborhood]
+# Gene-neighborhood distance analysis: for each (species, primary, cooccur)
+# triple, compute how many genes apart they are on the chromosome. Adds
+# <id>_dist columns to the cooccurrence CSV (and per-primary distance
+# columns to the collapsed CSV).
+#
+# Coordinate data comes from NCBI EFetch:
+#   1. UniProt accession -> RefSeq protein id (from cached UniProt JSON, or
+#      via NCBI esearch as fallback).
+#   2. EFetch the RefSeq protein in GenBank format -> parse /coded_by= for
+#      (contig, start, strand).
+#   3. EFetch each unique contig's feature table -> sorted gene list to
+#      convert coordinates into ordinals.
+#
+# All results are cached under cache_dir; subsequent runs reuse the cache
+# and are fast. The FIRST run with this feature enabled can take an hour
+# or more for large datasets (one NCBI call per accession + one per contig).
+neighborhood          = false
+# Distances are measured in NUCLEOTIDES between protein start coordinates.
+# Beyond this cap, distances are rendered as '>N' (sign dropped). 100000bp
+# (= 100kb) is generous and lets most operons / regulatory regions appear
+# with exact numbers while still bounding the column width.
+neighborhood_max_dist = 100000
+cooccurrence_mode = rbh
+
+# NCBI Entrez credentials. NCBI's terms require programmatic users to
+# identify themselves with an email; an API key raises the rate limit
+# from 3 req/s to 10 req/s, which matters for large runs.
+# NOTE: this file is plain text. Don't commit it to a public repo with
+# your key still in it.
+ncbi_api_key          =            # optional; raises NCBI rate limit. Do NOT commit a real key.
+ncbi_email            =            # required if neighborhood=true (NCBI ToS)
+
+# Cap total NCBI calls per pipeline run as a safety net. 0 = unlimited.
+# If the cap is hit, the run completes with blanks for unresolved
+# accessions rather than failing.
+neighborhood_max_lookups_per_run = 0
+
+[resources]
+# Default threads for multithreaded tools (overridable per-rule in the
+# Slurm profile under profiles/slurm/).
+threads         = 8

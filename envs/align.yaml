@@ -1,0 +1,12 @@
+# Conda environment for alignment, trimming, and tree inference rules
+# (align_group, trim_group, tree).
+name: cophy-align
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >=3.9
+  - mafft
+  - clipkit
+  - fasttree
+  - pagan2        # only needed if aligner = pagan2 in the config

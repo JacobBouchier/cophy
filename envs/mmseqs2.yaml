@@ -1,0 +1,8 @@
+# Conda environment for the mmseqs2 sequence search rule.
+name: cophy-mmseqs2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >=3.9
+  - mmseqs2

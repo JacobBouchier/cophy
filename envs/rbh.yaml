@@ -1,0 +1,12 @@
+# Conda environment for the reciprocal-best-hit rules (primary_rbh,
+# cooccurrence_rbh). RBH runs mmseqs2 and HMMER back-searches, and can
+# optionally use foldseek.
+name: cophy-rbh
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >=3.9
+  - mmseqs2
+  - hmmer
+  - foldseek

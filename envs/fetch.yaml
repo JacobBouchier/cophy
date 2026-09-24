@@ -1,0 +1,10 @@
+# Conda environment for the pure-Python rules that fetch data from
+# UniProt/EBI/NCBI and assemble tables (fetch_query, build_group,
+# supermatrix, cooccurrence, itol, build_species_taxon_list). These
+# scripts use only the Python standard library (urllib for HTTP), so
+# this environment needs nothing beyond Python itself.
+name: cophy-fetch
+channels:
+  - conda-forge
+dependencies:
+  - python >=3.9

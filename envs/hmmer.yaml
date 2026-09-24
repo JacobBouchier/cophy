@@ -1,0 +1,8 @@
+# Conda environment for the HMMER (phmmer) sequence search rule.
+name: cophy-hmmer
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >=3.9
+  - hmmer

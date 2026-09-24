@@ -1,0 +1,65 @@
+#  CoPhy — concatenated phylogenomic pipeline
+#  Snakemake workflow. Run from the repo root:
+#     snakemake --profile profiles/slurm --configfile config/config.txt ... (see README)
+#  In practice the config is a .txt parsed by our own loader, so we pass its
+#  path via --config cfg=... rather than Snakemake's native --configfile.
+
+import os
+import re
+import sys
+
+# Make our scripts importable for the helper that expands the query list.
+sys.path.insert(0, os.path.join(os.getcwd(), "workflow", "scripts"))
+from config import load_config
+
+CFG_PATH = config.get("cfg", "config/config.txt")
+CFG = load_config(CFG_PATH)
+
+# Results layout: results/<project_name>/ to isolate runs by different users.
+# The bash driver (submit_cophy.sh) passes outdir=results/<project_name>
+# at submission time. Direct snakemake invocations (e.g. for --unlock or
+# dry-runs) get a plain "results" if outdir isn't passed.
+OUTDIR = config.get("outdir", "results")
+TMPDIR = config.get("tmp", os.path.join(OUTDIR, "tmp"))
+THREADS = CFG["threads"]
+
+PRIMARY = CFG["query_ids"]
+COOCCUR = CFG["cooccurrence_ids"]
+TOOLS = CFG["enabled_tools"]
+ALL_GROUPS = PRIMARY + COOCCUR
+
+
+# ---- helper: query file path per group (seq tools vs foldseek) -------------
+def query_path(group, tool):
+    if tool == "foldseek":
+        return f"{OUTDIR}/queries/{group}.pdb"
+    return f"{OUTDIR}/queries/{group}.fasta"
+
+
+wildcard_constraints:
+    group="|".join(re.escape(g) for g in ALL_GROUPS) if ALL_GROUPS else "x",
+    tool="|".join(TOOLS),
+
+
+# ===========================================================================
+# Target rule
+# ===========================================================================
+rule all:
+    input:
+        f"{OUTDIR}/tree/species_tree.nwk",
+        f"{OUTDIR}/cooccurrence.csv",
+        f"{OUTDIR}/cooccurrence_collapsed.csv",
+        f"{OUTDIR}/itol/.done",
+
+
+include: "rules/queries.smk"
+include: "rules/search.smk"
+include: "rules/groups.smk"
+include: "rules/primary_rbh.smk"
+include: "rules/align.smk"
+include: "rules/trim.smk"
+include: "rules/supermatrix.smk"
+include: "rules/tree.smk"
+include: "rules/cooccurrence.smk"
+include: "rules/cooccurrence_rbh.smk"
+include: "rules/itol.smk"
